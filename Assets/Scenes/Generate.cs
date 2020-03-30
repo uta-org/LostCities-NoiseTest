@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using LibNoise;
 using LibNoise.Generator;
 using LibNoise.Operator;
@@ -21,10 +22,10 @@ public enum NoiseType
 public class Generate : MonoBehaviour
 {
     [SerializeField]
-    private int m_x;
+    private int m_x = -1;
 
     [SerializeField]
-    private int m_z;
+    private int m_z = -1;
 
     private int chunkX => m_x / 16;
     private int chunkZ => m_z / 16;
@@ -47,14 +48,24 @@ public class Generate : MonoBehaviour
     public float tolerance = .5f;
 
     public float offset = 0f;
+
+    [HideInInspector]
     public float turbulence = 0f;
+
     public int perlinOctaves = 6;
-    public double displacement = 4;
-    public double frequency = 2;
-    public int seed = 0;
+
+    [HideInInspector] public double displacement = 4;
+
+    [Range(0.01f, 8f)] public double frequency = 2;
+    [Range(.05f, 4)] public double persistence = 1.0;
+    [Range(.05f, 4)] public double lacunarity = 2.0;
+
+    public int seed;
 
     public Color validColor = Color.red;
     public Color noValidColor = Color.blue;
+
+    private float[] prefill;
 
     // Start is called before the first frame update
     private void Start()
@@ -75,7 +86,7 @@ public class Generate : MonoBehaviour
 
             case NoiseType.Voronoi:
                 // moduleBase = new Voronoi();
-                seed = UnityEngine.Random.Range(0, 100);
+                seed = Random.Range(0, 100);
                 moduleBase = new Voronoi(frequency, displacement, seed, false);
 
                 break;
@@ -95,7 +106,11 @@ public class Generate : MonoBehaviour
 
             default:
                 var defPerlin = new Perlin();
+                defPerlin.Seed = seed;
                 defPerlin.OctaveCount = perlinOctaves;
+                defPerlin.Frequency = frequency;
+                defPerlin.Lacunarity = lacunarity;
+                defPerlin.Persistence = persistence;
                 moduleBase = defPerlin;
 
                 break;
@@ -106,12 +121,23 @@ public class Generate : MonoBehaviour
         int w = chunks * 16;
         int h = chunks * 16;
 
+        float xOffset = m_x == -1 ? offset : m_x;
+        float zOffset = m_z == -1 ? offset : m_z;
+
         var noise = new Noise2D(w, h, moduleBase);
+        /*
+        noise.GeneratePlanar(
+            xOffset + -1 * 1 / zoom,
+            xOffset + xOffset + 1 * 1 / zoom,
+            zOffset + -1 * 1 / zoom,
+            zOffset + 1 * 1 / zoom);
+            */
+
         noise.GeneratePlanar(
             offset + -1 * 1 / zoom,
             offset + offset + 1 * 1 / zoom,
             offset + -1 * 1 / zoom,
-            offset + 1 * 1 / zoom, true);
+            offset + 1 * 1 / zoom);
 
         texture = new Texture2D(w, h);
 
@@ -154,7 +180,11 @@ public class Generate : MonoBehaviour
         }
         else
         {
-            for (int i = 0; i < cs.Length; i++)
+            // prefill = Enumerable.Repeat(-1f, chunks * chunks).ToArray();
+            prefill = new float[chunks * chunks];
+
+            int l = cs.Length;
+            for (int i = 0; i < l; i++)
             {
                 // cs[i] = Color.red;
 
@@ -164,11 +194,31 @@ public class Generate : MonoBehaviour
                 int x = lx / 16;
                 int z = lh / 16;
 
-                float v = noise[x, z];
-                // perlin(chunkX + x - chunks / 2, chunkZ + z - chunks / 2, w, h);
+                int j = x * chunks + z;
+
+                /*
+                int fv = (int)prefill[j];
+                float v = fv == -1 ? noise[x, z] : fv;
+                if (fv == -1) prefill[j] = v;
+                */
+
+                float v = Mathf.Clamp01((float)moduleBase.GetValue(m_x + x - chunks / 2, 0, m_z + z - chunks / 2));
+                // noise[x, z];
+                // noise[m_x + x - chunks / 2, m_z + z - chunks / 2];
+
+                //float v = i % 256 == 0 ? noise[x, z] : lv;
+
+                prefill[j] = v;
+
+                /*
+                if (i == l / 2)
+                {
+                    cs[i] = Color.green;
+                    continue;
+                }
+                */
 
                 cs[i] = v >= tolerance ? validColor : noValidColor;
-                // cs[i] = Color.Lerp(Color.white, Color.black, v);
             }
         }
 
@@ -186,6 +236,8 @@ public class Generate : MonoBehaviour
         sw.Stop();
 
         Debug.Log($"[{pixels} / {total}] Elapsed {sw.ElapsedMilliseconds / 1000f:F4} seconds!");
+
+        // Debug.Log($"Min: {prefill.Min()}; Max: {prefill.Max()}");
     }
 
     private static float perlin(float x, float z, int w, int h, float scale = 1.0f)

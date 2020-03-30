@@ -193,7 +193,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: -1.114e-42, y: 6e-45, z: 2.4e-44, w: 0}
+  m_BoundingSphereOverride: {x: 0, y: 0, z: 1.46e-43, w: 0.10546875}
   m_UseBoundingSphereOverride: 0
   m_ShadowRadius: 0
   m_ShadowAngle: 0
@@ -325,17 +325,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_x: 3739019
   m_z: -214261
-  chunks: 512
+  chunks: 64
   fill: 1
   noiseType: 0
-  zoom: 0.02
+  zoom: 1
   tolerance: 0.5
   offset: 0
   turbulence: 0
-  perlinOctaves: 6
+  perlinOctaves: 5
   displacement: 4
-  frequency: 0.02
-  seed: 0
+  frequency: 0.03999999910593033
+  persistence: 0.800000011920929
+  lacunarity: 1.5
+  seed: 1337
   validColor: {r: 1, g: 0, b: 0, a: 1}
   noValidColor: {r: 0, g: 0, b: 1, a: 1}
 --- !u!4 &1117804374
